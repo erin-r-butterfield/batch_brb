@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# This software was created by the Wellcome Centre for Anti-Infectives Research using Wellcome Trust funding
+# batch_brb  Copyright (C) 2020  University of Dundee
+# For full details see LICENSE.txt or http://www.gnu.org/licenses/
+
+####This script will setup the batch_brb work area
+#Usage: batch_brb_setup
+
+set -euo pipefail
+
+#Create directories
+mkdir -p batch_brb/{databases,jobs,templates,documentation}
+
+#Copy data into folders
+cp ${CONDA_PREFIX}/etc/templates/* templates/
+cp ${CONDA_PREFIX}/etc/documentation/* documentation/
+
+#Show welcome message
+cat ${CONDA_PREFIX}/etc/documentation/info.txt

@@ -1,0 +1,29 @@
+
+
+#### Welcome to batch_brb ####
+
+This software is designed for the automation of best reciprocal BLAST 
+and phylogenetic analysis using FastTree. If you use this software 
+please cite (ADD LATER) and the dependency publications (see documentation). 
+
+
+This software was created by the Wellcome Centre for Anti-Infectives 
+Research using Wellcome Trust funding
+
+batch_brb  Copyright (C) 2020  University of Dundee
+
+This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
+This is free software, and you are welcome to redistribute it
+under certain conditions; type `show c' for details. 
+
+
+For general enquires please contact ebutterfield@dundee.ac.uk, please use 
+the GitHub issue tracker to report any problems using batch_brb
+
+To get started head over to the documentation 
+
+Happy comparative genomics :-)
+
+##############
+
+

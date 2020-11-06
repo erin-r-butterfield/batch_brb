@@ -1,0 +1,205 @@
+#!/usr/bin/env bash
+
+# This software was created by the Wellcome Centre for Anti-Infectives Research using Wellcome Trust funding
+# batch_brb  Copyright (C) 2020  University of Dundee
+# For full details see LICENSE.txt or http://www.gnu.org/licenses/
+
+
+while :; do
+    case $1 in
+    	-h|--help)
+      	echo " "
+      	echo "This script will retrieve matching accessions from the SQLite3 database, if they are not found BLAST is performed to enable accession identification by user."
+      	echo " "
+      	echo "USAGE: accession_retrieve [options]"
+      	echo " "
+      	echo "options:"
+      	echo "-h, --help 			show brief help"
+      	echo "-csv       	        csv file of parameters, required"
+        echo "                                csv must be in format: FASTA_FILE, JOB_NAME, BLAST_DATABASE_NAME, SQLITE3_DATABASE, EVALUE, MAX, NUM_THREADS"
+        echo "                                The following fields are optional, defualt values are shown, all other fields are required:"
+        echo "                                SQLITE3_DB: SQLite3 database, default = accession_db.db"
+        echo "                                EVALUE: Expect value for BLAST, default = 0.1"
+        echo "                                MAX: int, maximum numnber of sequences to retrieve in BLAST, default = 5"
+        echo "                                NUM_THREADS: int, number of threads to use, default = 4"
+      	exit 0
+      	;;
+        -csv) CSV="$2" 
+        shift        
+        ;;
+        *) break
+    esac
+    shift
+done
+
+pattern=' '
+# SCRIPT_PATH='../../scripts/'
+DB_PATH='../../databases/'
+
+i=1
+while IFS="," read INFILE JOB BLAST_DB SQLDB EVALUE MAX NUM_THREADS || [ -n "$INFILE$JOB$BLAST_DB$SQLDB$EVALUE$MAX$NUM_THREADS" ];
+do
+	test $i -eq 1 && ((i=i+1)) && continue
+    
+    NUM_THREADS=$(echo $NUM_THREADS | tr -d '\r')
+
+    # Validating inputs and setting default values
+        
+    if [ -z "$INFILE" ] ||  [ -z "$JOB" ] || [ -z "$BLAST_DB" ] 
+    then
+        echo 'Fasta_file, job_name and BLAST_database_name are required arguments'
+    fi
+
+    if [[ "$INFILE" =~ ^[0-9] ]] || [[ "$JOB" =~ ^[0-9] ]] || [[ "$BLAST_DB" =~ ^[0-9] ]] || [[ "$SQLDB" =~ ^[0-9] ]];
+    then
+        echo 'Paramaeters cannot start with a number'
+        exit 1
+    fi
+
+    if [[ "$BLAST_DB" =~ $pattern ]] || [[ "$SQLDB" =~ $pattern ]];
+    then
+        echo 'BLAST_database and SQLite3_db cannot contain spaces, please replace with _'
+        exit 1
+    fi
+
+    if [[ "$JOB" =~ $pattern ]]
+    then
+        JOB="${JOB// /_}"
+    fi
+    
+
+    if [[ "$INFILE" =~ $pattern ]]
+    then
+        mv "$INFILE" "${INFILE// /_}"
+        INFILE="${INFILE// /_}"
+    fi
+
+    if [ -z "$NUM_THREADS" ]
+    then
+        NUM_THREADS=4
+    fi
+
+
+    if [ -z "$MAX" ]
+    then
+        MAX=5
+    fi
+
+    if ! [[ "$MAX" =~ ^[0-9]+$ ]] || ! [[ "$NUM_THREADS" =~ ^[0-9]+$ ]] 
+    then
+        echo 'max and num_threads must be an integer'
+        exit 1
+    fi
+
+    if [ -z "$EVALUE" ]
+    then
+        EVALUE=0.1
+    fi
+
+
+    BASE="${INFILE##*/}"
+    FBNAME="${BASE%.*}"
+
+
+    
+
+    #If db not supplied then set database to default
+    if [ -z "$SQLDB" ]
+    then
+        SQLDB=accession_db.db
+    fi
+
+
+    #Accession retrieve pipeline
+    echo "#### $JOB ####"
+
+    folder="$(date '+%Y%m%d%H%M%S')_${JOB}"
+    mkdir "$folder"
+    cd "$folder"
+    mv ../"$INFILE" .
+
+    seqkit stats "$INFILE" -T > "${FBNAME}"_stats_output.txt
+
+    echo '#Identifying data types'
+    if tail -n +2 "${FBNAME}"_stats_output.txt | cut -f2 | grep "FASTA"
+    then 
+        if tail -n +2 "${FBNAME}"_stats_output.txt | cut -f3 | grep "Protein"
+        then
+            DBTYPE='prot'
+            echo "$DBTYPE"
+            rm "${FBNAME}"_stats_output.txt
+        else
+            DBTYPE='nucl'
+            echo "$DBTYPE"
+            rm "${FBNAME}"_stats_output.txt
+        fi
+
+        FPROT=$(ls "$DB_PATH${BLAST_DB}_database".p* 2> /dev/null)
+        FNUCL=$(ls "$DB_PATH${BLAST_DB}_database".n* 2> /dev/null)
+
+        if [ ! -z "$FPROT" ]
+        then
+            echo "Protein database detected for BLAST database"
+            FB_TYPE='prot'
+        elif [ ! -z "$FNUCL" ]
+        then
+            echo "Nucleotide database detected for BLAST database"
+            FB_TYPE='nucl'
+        else
+            echo "Can't find BLAST database"
+            mv "$INPUT" ../
+            exit 1
+        fi
+
+
+        if [ "$DBTYPE" != "$FB_TYPE" ]
+        then
+            echo 'Input sequences different data type to BLAST database, please convert to same type'
+            exit 1
+        fi
+
+        if [ "$FB_TYPE" == 'prot' ]
+        then 
+            FBLAST='blastp'
+        else
+            FBLAST='blastn'
+        fi
+
+        echo
+        echo
+        echo '#Retrieving accessions'
+        echo "Matched accessions in: ${JOB}_db_accessions.csv"
+        python ar01_accret.py -fa "$INFILE" -out "$JOB" -name "$BLAST_DB" -type "$DBTYPE" -db "$DB_PATH$SQLDB"
+        
+
+        #Performing BLAST if unable to identify all accessions
+        if [ -s "${JOB}_missing.fasta" ]
+        then
+            echo
+            echo
+            echo '#Running BLAST'
+            echo "BLAST type: ${FBLAST}, Database searched: ${BLAST_DB}_database, Evalue: ${EVALUE}, Max_hits: ${MAX}"
+            "$FBLAST" -db "$DB_PATH${BLAST_DB}_database" -query "${JOB}_missing.fasta" -out "${JOB}_missing_BLAST.txt" -evalue "$EVALUE" -outfmt '6 std gaps qcovs qcovhsp qlen slen' -max_target_seqs "$MAX" -num_threads "$NUM_THREADS"
+            "$FBLAST" -db "$DB_PATH${BLAST_DB}_database" -query "${JOB}_missing.fasta" -out "${JOB}_missing_BLAST_default.txt" -evalue "$EVALUE" -max_target_seqs "$MAX" -num_threads "$NUM_THREADS"
+            echo "Tabular BLAST results in: ${JOB}_missing_BLAST.txt"
+            echo "Default BLAST results including alignments in: ${JOB}_missing_BLAST_default.txt"
+        fi
+
+        echo
+        echo
+        echo
+        echo
+        cd ../
+
+    else 
+        echo "Error: Input file $INFILE invalid FASTA format"
+        rm "${FBNAME}"_stats_output.txt
+        echo
+        echo
+        echo
+        echo
+        cd ../
+        exit 1
+    fi
+
+done < $CSV

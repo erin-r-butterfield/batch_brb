@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+# This software was created by the Wellcome Centre for Anti-Infectives Research using Wellcome Trust funding
+# batch_brb  Copyright (C) 2020  University of Dundee
+# For full details see LICENSE.txt or http://www.gnu.org/licenses/
+
+while :; do
+    case $1 in
+    	-h|--help)
+      	echo " "
+      	echo "This script will create a BLAST database from a fasta file and add the accessions to a SQLite3 database."
+      	echo " "
+      	echo "USAGE: batch_makeblastdb [options]"
+      	echo " "
+      	echo "options:"
+      	echo "-h, --help 			show brief help"
+      	echo "-csv       	        csv file of parameters, required"
+        echo "                                csv must be in format: INFILE, DB"
+        echo "                                INFILE: Required, input fasta file"
+        echo "                                DB: Optional, default = accession_db.db"
+      	exit 0
+      	;;
+        -csv) CSV="$2" 
+        shift        
+        ;;
+        *) break
+    esac
+    shift
+done
+
+pattern=' '
+#SCRIPT_PATH='../scripts/'
+
+i=1
+while IFS="," read INFILE DB || [ -n "$INFILE$DB" ];
+do
+	test $i -eq 1 && ((i=i+1)) && continue
+
+    DB=$(echo $DB | tr -d '\r')
+
+    # Check no illegal characters present
+    if [[ "$INFILE" =~ ^[0-9] ]] || [[ "$DB" =~ ^[0-9] ]];
+    then
+        echo 'Infile and DB cannot start with a number'
+        exit 1
+    fi
+
+    
+    if [[ "$DB" =~ $pattern ]]
+    then
+        DB="${DB// /_}"
+    fi
+
+    if [[ "$INFILE" =~ $pattern ]]
+    then
+        mv "$INFILE" "${INFILE// /_}"
+        INFILE="${INFILE// /_}"
+    fi
+
+
+
+    BASE="${INFILE##*/}"
+    FBNAME="${BASE%.*}"
+    NAME="$FBNAME"
+
+    
+    #If db not supplied then set database to default
+    if [ -z "$DB" ]
+    then
+        DB=accession_db.db
+    fi
+
+
+    mdb01_makeblastdb.sh -in "$INFILE" -db "$DB"
+done < $CSV

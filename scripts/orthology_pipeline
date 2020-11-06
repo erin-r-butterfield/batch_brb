@@ -1,0 +1,343 @@
+#!/usr/bin/env bash
+
+# This software was created by the Wellcome Centre for Anti-Infectives Research using Wellcome Trust funding
+# batch_brb  Copyright (C) 2020  University of Dundee
+# For full details see LICENSE.txt or http://www.gnu.org/licenses/
+
+while :; do
+    case $1 in
+    	-h|--help)
+      	echo " "
+      	echo "This script will calculate putative orthologs using best reciprocal BLAST with the option to generate phylogenetic trees using FastTree."
+      	echo " "
+      	echo "USAGE: orthology_pipeline -csv [options]"
+      	echo " "
+      	echo "options:"
+      	echo "-h, --help 			show brief help"
+      	echo "-csv       	        csv file of parameters, required"
+        echo "                                csv must be in format: JOB_NAME, ACCESSION_LIST, FB_DATABASE, RB_DATABASE, EVALUE, HITS, COVERAGE, SQLITE3_DB, NUM_THREADS, MAX, TREE, FREQUENCY, MODEL"
+        echo "                                The following fields are optional, defualt values are shown, all other fields are required:"
+        echo "                                SQLITE3_DB: SQLite3 database, default = accession_db.db"
+        echo "                                NUM_THREADS: int, number of threads to use, default = 4"
+      	echo "                                MAX: int, maximum number of sequences to retrieve in BLAST, default = 150"
+        echo "                                TREE: boolean (y/n), perform phylogenetic analysis, default = n"
+        echo "                                FREQUENCY: float, frequency of gaps allowed per residue, if TREE selected default = 0.25"
+        echo "                                MODEL: model to use for phylogenetic analysis, OPTIONS lg or wag for protein or gtr for nucleotide, if TREE selected default = JTT for protein and JC for nucleotide"
+        exit 0
+      	;;
+        -csv) CSV="$2" 
+        shift        
+        ;;
+        *) break
+    esac
+    shift
+done
+
+pattern=' '
+DB_PATH='../../databases/'
+# SCRIPT_PATH='../../scripts/'
+
+i=1
+while IFS="," read  NAME INPUT FBLAST_DB RBLAST_DB EVALUE HITS COV SQLDB NUM_THREADS MAX_HITS TREE FREQ MODEL|| [ -n "$NAME$INPUT$FBLAST_DB$RBLAST_DB$EVALUE$HITS$COV$SQLDB$NUM_THREADS$MAX_HITS$TREE$FREQ$MODEL" ];
+do
+	test $i -eq 1 && ((i=i+1)) && continue
+    BASE="${INPUT%.*}"
+    FBNAME="${BASE%.*}"
+    MODEL=$(echo $MODEL | tr -d '\r')
+
+    #Validating inputs   
+    if [ -z "$NAME" ] || [ -z "$INPUT" ] || [ -z "$FBLAST_DB" ] || [ -z "$RBLAST_DB" ] || [ -z "$HITS" ] || [ -z "$COV" ]; 
+    then
+        echo 'Job_name, Accession_list, FB_database, RB_database, Hits and Coverage are required arguments'        
+        exit 1
+    fi
+    
+    if [[ "$NAME" =~ ^[0-9] ]] || [[ "$INPUT" =~ ^[0-9] ]] || [[ "$FBLAST_DB" =~ ^[0-9] ]] || [[ "$RBLAST_DB" =~ ^[0-9] ]] || [[ "$SQLDB" =~ ^[0-9] ]];
+    then
+        echo 'Job_name, Accession_list, FB_database, RB_database and SQLite3_db cannot start with a number'
+        exit 1
+    fi
+
+    if [[ "$FBLAST_DB" =~ $pattern ]] || [[ "$RBLAST_DB" =~ $pattern ]] || [[ "$SQLDB" =~ $pattern ]];
+    then
+        echo 'Job_name, Accession_list, FB_database, RB_database and SQLite3_db cannot contain spaces, please replace with _'
+        exit 1
+    fi
+
+    if [[ "$NAME" =~ $pattern ]]
+    then
+        NAME="${NAME// /_}"
+    fi
+
+    if [[ "$INFILE" =~ $pattern ]]
+    then
+        mv "$INFILE" "${INFILE// /_}"
+        INFILE="${INFILE// /_}"
+    fi
+
+    #Setting default values if parameters not supplied
+    if [ -z "$EVALUE" ]
+    then
+        EVALUE=0.1
+    fi
+    
+    if [ -z "$SQLDB" ]
+    then
+        SQLDB=accession_db.db
+    fi    
+    
+    if [ -z "$NUM_THREADS" ]
+    then
+        NUM_THREADS=4
+    fi
+
+    if [ -z "$MAX_HITS" ]
+    then
+        MAX_HITS=150
+    fi
+
+    
+
+    ####Running orthology pipeline####
+    echo "#### $NAME ####"
+    echo
+    echo
+
+
+    folder="$(date '+%Y%m%d%H%M%S')_${NAME}"
+    mkdir "$folder"
+    cd "$folder"
+    mv ../"$INPUT" .
+
+    #Determining BLAST data types
+    echo "#IDENTIFYING BLAST DATABASE DATA TYPES"
+    FPROT=$(ls "$DB_PATH${FBLAST_DB}".p* 2> /dev/null)
+    FNUCL=$(ls "$DB_PATH${FBLAST_DB}".n* 2> /dev/null)
+    RPROT=$(ls "$DB_PATH${RBLAST_DB}_database".p* 2> /dev/null)
+    RNUCL=$(ls "$DB_PATH${RBLAST_DB}_database".n* 2> /dev/null)
+
+
+
+    if [ ! -z "$FPROT" ]
+    then
+        echo "Protein database detected for first BLAST"
+        FB_TYPE='prot'
+        FP_ALIAS=$(ls "$DB_PATH${FBLAST_DB}".pal 2> /dev/null)
+    elif [ ! -z "$FNUCL" ]
+    then
+        echo "Nucleotide database detected for first BLAST"
+        FB_TYPE='nucl'
+        FN_ALIAS=$(ls "$DB_PATH${FBLAST_DB}".nal 2> /dev/null)
+    else
+        echo "Can't find first BLAST database"
+        mv "$INPUT" ../
+        exit 1
+    fi
+
+
+    if [ ! -z "$RPROT" ]
+    then
+        echo "Protein database detected for reverse BLAST"
+        RB_TYPE='prot'
+        RP_ALIAS=$(ls "$DB_PATH${RBLAST_DB}".pal 2> /dev/null)
+    elif [ ! -z "$RNUCL" ]
+    then
+        echo "Nucleotide database detected for reverse BLAST"
+        RB_TYPE='nucl'
+        RN_ALIAS=$(ls "$DB_PATH${RBLAST_DB}".nal 2> /dev/null)
+    else
+        echo "Can't find reverse BLAST database"
+        mv "$INPUT" ../
+        exit 1
+    fi
+
+
+    if [ ! -z "$FP_ALIAS" ] || [ ! -z "$FN_ALIAS" ]
+    then
+        FB_ALIAS='True'
+    fi
+
+    
+    if [ ! -z "$RP_ALIAS" ] || [ ! -z "$RN_ALIAS" ]
+    then
+        echo "Error: Reverse BLAST cannot be an alias database"
+        exit 1
+    fi
+
+
+
+    if [ "$FB_TYPE" == 'prot' ] && [ "$RB_TYPE" == 'prot' ]
+    then
+        FBLAST='blastp'
+        RBLAST='blastp'
+    elif [ "$FB_TYPE" == 'nucl' ] && [ "$RB_TYPE" == 'nucl' ]
+    then
+        FBLAST='blastn'
+        RBLAST='blastn'
+    elif [ "$FB_TYPE" == 'prot' ] && [ "$RB_TYPE" == 'nucl' ]
+    then
+        FBLAST='blastx'
+        RBLAST='tblastn'
+    elif [ "$FB_TYPE" == 'nucl' ] && [ "$RB_TYPE" == 'prot' ]
+    then
+        FBLAST='tblastn'
+        RBLAST='blastx'
+    else
+        echo "Error: Could not detect BLAST type"
+        mv "$INPUT" ../
+        exit 1
+    fi
+
+    echo
+    echo
+
+
+    ####CREATE INPUT FASTA FILE####
+    # Retrieve sequences
+    echo "#RETRIEVING QUERY SEQUENCES"
+    sed -i 's/\r/\n/g' "$INPUT"
+    sort "$INPUT" | uniq > "${NAME}_uniq.txt"
+    blastdbcmd -db "$DB_PATH${RBLAST_DB}_database" -entry_batch "${NAME}_uniq.txt" -out "${NAME}.fasta"
+    echo "Query fasta: ${NAME}.fasta"
+    if [ ! -s ${NAME}.fasta ]
+    then
+        echo "Error: Fasta file empty"
+        mv "$INPUT" ../
+        exit 1
+    fi
+
+    echo
+    echo
+    ####RUN FIRST BLASTS####
+    echo "#RUNNING FIRST BLAST"
+    echo "$FBLAST version:"
+    "$FBLAST" -version
+    echo "Input query: ${NAME}.fasta, Database searched: $FBLAST_DB, Evalue used: $EVALUE, First BLAST results files: ${NAME}_FB.txt and ${NAME}_FB_default.txt"
+    echo "Database details:"
+    blastdbcmd -db "$DB_PATH$FBLAST_DB" -info
+    "$FBLAST" -db "$DB_PATH$FBLAST_DB" -query "${NAME}.fasta" -out "${NAME}_FB.txt" -evalue "$EVALUE" -outfmt '6 std gaps qcovs qcovhsp qlen slen' -max_target_seqs "$MAX_HITS" -num_threads "$NUM_THREADS"
+    "$FBLAST" -db "$DB_PATH$FBLAST_DB" -query "${NAME}.fasta" -out "${NAME}_FB_default.txt" -evalue "$EVALUE" -max_target_seqs "$MAX_HITS" -num_threads "$NUM_THREADS"
+    if [ ! -s "${NAME}_FB.txt" ]
+    then
+        echo "Error: No first BLAST results"
+        mv "$INPUT" ../
+        exit 1
+    fi
+
+    echo
+    echo
+    ####RUN FILTERING####
+    echo "#FILTERING FIRST BLAST RESULTS"
+    echo "Filtering parameters: ${COV}% alignment coverage and top $HITS hits selected"
+    echo "Filtered hits file: ${NAME}_filtered_FB.txt"
+    python or01_filter_hits.py "${NAME}_FB.txt" "$NAME" "$HITS" "$COV" "$DB_PATH$SQLDB" "$FB_TYPE"
+    if [ ! -s "${NAME}_filtered_FB.txt" ]
+    then
+        echo "Error: No filtered first BLAST results"
+        mv "$INPUT" ../
+        exit 1
+    fi
+
+
+    echo
+    echo
+    ####RUN REVERSE BLASTS####
+    # Retrieve sequences
+    echo "#RETRIEVING HIT SEQUENCES"
+    blastdbcmd -db "$DB_PATH$FBLAST_DB" -entry_batch "${NAME}_hits.txt" -out "${NAME}_hits.fasta"
+    echo "Hit sequences file: ${NAME}_hits.fasta"
+    if [ ! -s "${NAME}_hits.fasta" ]
+    then
+        echo "Error: No hit sequences retrieved"
+        mv "$INPUT" ../
+        exit 1
+    fi
+    echo
+    echo
+    # Run reverse BLAST
+    echo "#RUNNING REVERSE BLAST"
+    "$RBLAST" -version
+    echo "Input query: ${NAME}_hits.fasta, Database searched: $RBLAST_DB, Evalue used: $EVALUE, reverse BLAST results files: ${NAME}_RB.txt, ${NAME}_RB_default.txt"
+    echo "Database details:"
+    blastdbcmd -db "$DB_PATH${RBLAST_DB}_database" -info
+    "$RBLAST" -db "$DB_PATH${RBLAST_DB}_database" -query "${NAME}_hits.fasta" -out "${NAME}_RB.txt" -evalue "$EVALUE" -outfmt '6 std gaps qcovs qcovhsp qlen slen' -max_target_seqs "$MAX_HITS" -num_threads "$NUM_THREADS"
+    "$RBLAST" -db "$DB_PATH${RBLAST_DB}_database" -query "${NAME}_hits.fasta" -out "${NAME}_RB_default.txt" -evalue "$EVALUE" -max_target_seqs "$MAX_HITS" -num_threads "$NUM_THREADS"
+    if [ ! -s "${NAME}_RB.txt" ]
+    then
+        echo "Error: No reverse BLAST results"
+        mv "$INPUT" ../
+        exit 1
+    fi
+
+    echo
+    echo
+    ####RUN ORTHOLOGS AND CONVERT RESULTS####
+    echo "#FINDING PUTATIVE ORTHOLOGS"
+    echo "Filtering parameters: ${COV}% alignment coverage and top $HITS hits selected"
+    if [ "$FB_ALIAS" == "True" ]
+    then
+        python or02_find_orthologs.py "${NAME}_RB.txt" "${NAME}_filtered_FB.txt" "$NAME" "$HITS" "$COV" -sqldb "$DB_PATH$SQLDB" -blastdb "$FBLAST_DB"
+    else
+        python or02_find_orthologs.py "${NAME}_RB.txt" "${NAME}_filtered_FB.txt" "$NAME" "$HITS" "$COV"
+    fi
+    echo "Orthology results file: ${NAME}_orthologs.csv"
+    if [ ! -s "${NAME}_orthologs.csv" ]
+    then
+        echo "Error: No orthologs detected"
+        mv "$INPUT" ../
+        exit 1
+    fi
+
+
+    mv "$INPUT" ../
+
+
+    ####RUNNING FASTTREE PIPELINE IF REQUIRED####
+    if [ "$TREE" == "y" ] || [ ! -z "$FREQ" ] || [ ! -z "$MODEL" ]
+    then
+        echo
+        echo
+        echo "#BUILDING TREES"
+        if [ ! -z "$MODEL" ]
+        then
+            fasttree_pipeline -db "$FBLAST_DB" -csv "${NAME}_orthologs.csv" -m "$MODEL"
+        else
+            fasttree_pipeline -db "$FBLAST_DB" -csv "${NAME}_orthologs.csv"
+        fi
+    fi
+
+
+    ####NEATENING RESULT FILE STRUCTURE####
+    mkdir intermediary_files
+    cd intermediary_files
+    mkdir -p first_blast/{results,hits}
+    mv ../"${NAME}"_FB_default.txt first_blast/results/
+    mv ../"${NAME}"_FB.txt first_blast/results/
+    mv ../"${NAME}"_filtered_FB.txt first_blast/results/
+    mv ../"${NAME}"_hits.fasta first_blast/hits/
+    mv ../"${NAME}"_hits.txt first_blast/hits/
+    mkdir reverse_blast
+    mv ../"${NAME}"_RB_default.txt reverse_blast/
+    mv ../"${NAME}"_RB.txt reverse_blast/
+    mkdir input_fasta
+    mv ../"${NAME}".fasta input_fasta/
+    mv ../"${NAME}"_uniq.txt input_fasta/
+    cd ../../
+
+    echo
+    echo
+    echo "#$NAME PIPELINE COMPLETED"
+    echo
+    echo
+    done < $CSV
+
+
+
+
+
+
+
+
+
+
+

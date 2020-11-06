@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+
+# This software was created by the Wellcome Centre for Anti-Infectives Research using Wellcome Trust funding
+# batch_brb  Copyright (C) 2020  University of Dundee
+# For full details see LICENSE.txt or http://www.gnu.org/licenses/
+
+while :; do
+    case $1 in
+    	-h|--help)
+      	echo " "
+      	echo "This script will generate a BLAST alias database and input the details into a SQLite3 database."
+      	echo " "
+      	echo "USAGE: aliasdb_pipeline [options]"
+      	echo " "
+      	echo "options:"
+      	echo "-h, --help 			show brief help"
+      	echo "-csv       	        csv file of parameters, required"
+        echo "                                csv must be in format: DBLIST_FILE, DBTYPE, TITLE, OUTPUT, SQLITE3_DATABASE"
+        echo "                                The following fields are optional, defualt values are shown, all other fields are required:"
+        echo "                                SQLITE3_DB: default = accession_db.db"
+      	exit 0
+      	;;
+        -csv) CSV="$2" 
+        shift        
+        ;;
+        *) break
+    esac
+    shift
+done
+
+pattern=' '
+#SCRIPT_PATH='../scripts/'
+
+i=1
+while IFS="," read DBLIST DBTYPE TITLE OUTPUT SQLDB || [ -n "$DBLIST$DBTYPE$TITLE$OUTPUT$SQLDB" ];
+do
+	test $i -eq 1 && ((i=i+1)) && continue
+
+    SQLDB=$(echo $SQLDB | tr -d '\r')
+
+
+    # Make sure required arguments are supplied    
+    if [ -z "$DBLIST" ] ||  [ -z "$DBTYPE" ] || [ -z "$TITLE" ] || [ -z "$OUTPUT" ] 
+    then
+        echo 'dblist_file, dbtype, title, output are required arguments'
+        exit 1
+    fi
+    
+    if [[ "$DBTYPE" != 'prot' ]] && [[ "$DBTYPE" != 'nucl' ]]
+    then
+        echo 'Error: dbtype must equal either prot for protein or nucl for nucleotide'
+        exit 1
+    fi
+
+
+    # Check no illegal characters present
+    if [[ "$DBLIST" =~ ^[0-9] ]] || [[ "$OUTPUT" =~ ^[0-9] ]];
+    then
+        echo 'dblist_file and output cannot start with a number'
+        exit 1
+    fi
+
+    if [[ "$DBLIST" =~ $pattern ]] || [[ "$SQLDB" =~ $pattern ]];
+    then
+        echo 'dblist_file and SQLite3_db cannot contain spaces in the name, please replace with _'
+        exit 1
+    fi
+
+    if [[ "$OUTPUT" =~ $pattern ]]
+    then
+        OUTPUT="${OUTPUT// /_}"
+    fi
+    
+    TITLE="'""$TITLE""'"
+
+
+    # If db not supplied then set database to default
+    if [ -z "$SQLDB" ]
+    then
+        SQLDB=accession_db.db
+    fi
+
+    sed -i 's/\r/\n/g' "$DBLIST"
+
+
+    # Aliasdb pipeline
+    echo "#### $OUTPUT ####"
+    echo 'Making alias database'
+    python adb01_check_db.py -name "$OUTPUT" -db "$SQLDB" 
+    CHECK_SUCCESS=$?
+    if [ "$CHECK_SUCCESS" -ne "0" ]
+    then
+        echo
+        exit 1
+    fi
+
+    blastdb_aliastool -dbtype "$DBTYPE" -dblist_file "$DBLIST" -title "$TITLE" -out "$OUTPUT"
+    SUCCESS=$?
+
+    if [ "$SUCCESS" -eq "0" ]
+    then
+        echo "Adding database details to $SQLDB"
+        while :
+        do
+            set -o noclobber
+            if { > lock_file ; } &> /dev/null
+            then
+                python adb02_add_alias_to_db.py -infile "$DBLIST" -name "$OUTPUT" -db "$SQLDB" 
+                PYTHON_SUCCESS=$?
+                set +o noclobber
+                rm lock_file
+                break
+            fi
+            echo "lock file detected, sleeping...."
+            date +"%H:%M:%S"
+            sleep 2
+        done
+    else
+        echo
+        echo
+        exit 1
+    fi
+
+    if [ "$PYTHON_SUCCESS" -ne "0" ]
+    then
+        echo "Error: Failed to add database details to $SQLDB"
+        echo "Removing alias database"
+        if [ "$DBTYPE" == 'prot' ]
+        then
+            rm "${OUTPUT}.pal"
+        else
+            rm "${OUTPUT}.nal"
+        fi
+        exit 1
+    fi
+
+    echo
+    echo
+
+    
+done < $CSV
+

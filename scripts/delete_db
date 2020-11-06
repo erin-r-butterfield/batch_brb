@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+
+# This software was created by the Wellcome Centre for Anti-Infectives Research using Wellcome Trust funding
+# batch_brb  Copyright (C) 2020  University of Dundee
+# For full details see LICENSE.txt or http://www.gnu.org/licenses/
+
+while :; do
+    case $1 in
+    	-h|--help)
+      	echo " "
+      	echo "This script will delete a BLAST database and remove the corresponding information from the SQLite3 database."
+      	echo " "
+      	echo "USAGE: delete_db [options]"
+      	echo " "
+      	echo "options:"
+      	echo "-h, --help 			show brief help"
+      	echo "-csv       	        csv file of parameters, required"
+        echo "                                csv must be in format: BLAST_DB, SQLITE3_DB"
+        echo "                                BLAST_DB: Required, name of BLAST database to delete"
+        echo "                                SQLITE3_DB: Optional, SQLite3 database where data is stored, default = accession_db.db"
+      	exit 0
+      	;;
+        -csv) CSV="$2" 
+        shift        
+        ;;
+        *) break
+    esac
+    shift
+done
+
+pattern=' '
+# SCRIPT_PATH='../scripts/'
+
+i=1
+while IFS="," read BLASTDB SQLDB || [ -n "$BLASTDB$SQLDB" ];
+do
+	test $i -eq 1 && ((i=i+1)) && continue
+
+    SQLDB=$(echo $SQLDB | tr -d '\r')
+
+
+    # Make sure required arguments are supplied    
+    if [ -z "$BLASTDB" ]  
+    then
+        echo 'BLAST_db is a required argument'
+    fi
+    
+
+    # Check no illegal characters present
+    if [[ "$BLASTDB" =~ ^[0-9] ]] || [[ "$SQLDB" =~ ^[0-9] ]];
+    then
+        echo 'BLAST_db and SQLite3_db cannot start with a number'
+        exit 1
+    fi
+
+    if [[ "$BLASTDB" =~ $pattern ]] || [[ "$SQLDB" =~ $pattern ]];
+    then
+        echo 'BLAST_db and SQLite3_db cannot contain spaces in the name, please replace with _'
+        exit 1
+    fi
+
+
+    # If db not supplied then set database to default
+    if [ -z "$SQLDB" ]
+    then
+        SQLDB=accession_db.db
+    fi
+
+    ALIAS_DB='False'
+
+    ####Deletion pipeline####
+    echo "#### $BLASTDB ####"
+    #Determining BLAST database data type
+    FPROT=$(ls "${BLASTDB}_database".p* 2> /dev/null)
+    FNUCL=$(ls "${BLASTDB}_database".n* 2> /dev/null)
+    PALIAS=$(ls "${BLASTDB}".pal 2> /dev/null)
+    NALIAS=$(ls "${BLASTDB}".nal 2> /dev/null)
+
+    
+    if [ ! -z "$FPROT" ]
+    then
+        DBTYPE='prot'
+    elif [ ! -z "$FNUCL" ]
+    then
+        DBTYPE='nucl'
+    elif [ ! -z "$PALIAS" ] 
+    then
+        ALIAS_DB='True'
+        DBTYPE='prot'
+    elif [ ! -z "$NALIAS" ]
+    then
+        ALIAS_DB='True'
+        DBTYPE='nucl'
+    else
+        echo "Error: could not detect database"
+        exit 1
+    fi
+
+    
+
+    
+    #Deleting data from SQLite3 database
+    echo "Removing data from $SQLDB"
+    while :
+    do
+        set -o noclobber
+        if { > lock_file ; } &> /dev/null
+        then
+            if [ "$ALIAS_DB" == "True" ]
+            then
+                python del01_delete_db_entries.py -db "$SQLDB" -name "$BLASTDB" -alias
+                PYTHON_SUCCESS=$?
+            else
+                python del01_delete_db_entries.py -db "$SQLDB" -name "$BLASTDB" -type "$DBTYPE"
+                PYTHON_SUCCESS=$?
+            fi
+            set +o noclobber
+            rm lock_file
+            break
+        fi
+        echo "lock file detected, sleeping...."
+        date +"%H:%M:%S"
+        sleep 2
+    done
+
+
+    if [ "$PYTHON_SUCCESS" -ne "0" ]
+    then
+        echo "Error: Failed to remove data from $SQLDB"
+    fi
+
+
+    #Deleting BLAST database
+    echo "Deleting $BLASTDB database"
+    if [ "$ALIAS_DB" == "True" ]  && [ "$DBTYPE" == 'prot' ]
+    then
+        rm "${BLASTDB}".pal
+    elif [ "$ALIAS_DB" == "True" ]  && [ "$DBTYPE" == 'nucl' ]
+    then
+        rm "${BLASTDB}".nal
+    elif [ "$DBTYPE" == 'nucl' ]
+    then
+        rm "${BLASTDB}"_database.n*
+        rm "${BLASTDB}"_converted.fasta
+    elif [ "$DBTYPE" == 'prot' ]
+    then
+        rm "${BLASTDB}"_database.p*
+        rm "${BLASTDB}"_converted.fasta
+    else
+        echo "Could not delete $BLASTDB"
+    fi
+    echo
+    echo
+
+
+done < $CSV
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Read csv to get database names
+#Check for illegal characters, spaces etc
+#For each database:
+#   A. determine data type
+#   B. determine whether it is an alias database
+#   1. create database lock file
+#   2. run python script to delete database entries
+#   3. remove lock file
+#   4. rm file

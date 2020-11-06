@@ -1,0 +1,305 @@
+#!/usr/bin/env bash
+
+# This software was created by the Wellcome Centre for Anti-Infectives Research using Wellcome Trust funding
+# batch_brb  Copyright (C) 2020  University of Dundee
+# For full details see LICENSE.txt or http://www.gnu.org/licenses/
+
+while :; do
+    case $1 in
+    	-h|--help)
+      	echo " "
+      	echo "This script will generate FastTree phylogenetic trees from input fasta or accession lists specified in text files or orthology results in a CSV."
+      	echo " "
+      	echo "USAGE: fasttree_pipeline [options]"
+      	echo " "
+      	echo "options:"
+      	echo "-h, --help 			show brief help"
+      	echo "-db, --database      		BLAST database to retrieve sequences from, required for text or csv files"
+      	echo "-f, --frequency			OPTIONAL, frequency of gaps allowed per residue, default is 0.25"
+        echo "-csv                      OPTIONAL, CSV of ortholog results, the first column must be query accessions with the heading Accession, remaining columns must be the results with one column per organism, the first row should be organism names"
+        echo "-m                       OPTIONAL, model for phylogenetic analysis (choice of lg or wag for protein or gtr for nucleotide), default if not supplied is JTT for protein and JC for nucleotide"
+      	exit 0
+      	;;
+        -db|--database) DB=$2
+        shift          
+        ;;
+        -f|--frequency) FREQ=$2 
+        shift           
+        ;;
+        -csv) CSV=$2
+        shift
+        ;;
+        -m) MODEL=$2
+        shift
+        ;;
+        *) break
+    esac
+    shift
+done
+
+
+# SCRIPT_PATH='../../scripts/'
+pattern=' '
+
+
+
+# Default frequency if not supplied
+if [ -z "$FREQ" ]
+then
+      FREQ=0.25
+fi
+
+
+
+echo
+
+
+#If CSV of orthology results supplied convert results to text files and move into text files folder
+if [ ! -z "$CSV" ]
+then
+    python ft01_extract_accessions.py "$CSV"
+    cd Trees
+    DB_PATH='../../../databases/' 
+else
+    DB_PATH='../../databases/'
+fi
+
+# DB_PATH='../databases/' 
+
+#Determine whether any fasta files are present
+FASTA=$(ls *.fasta 2> /dev/null)
+
+
+if [ ! -z "$FASTA" ]
+then
+    for i in *.fasta
+    do
+        if [[ "$i" =~ $pattern ]]
+        then
+            mv "$i" "${i// /_}"
+            i="${i// /_}"
+        fi
+        fasta_files+=("$i")
+    done
+fi
+
+len=${#fasta_files[@]}
+echo "$len fasta files detected"
+
+
+
+
+
+#Determine whether any text files present
+TEXT=$(ls *.txt 2> /dev/null)
+
+if [ ! -z "$TEXT" ]
+then
+    for i in *.txt
+    do
+        if [[ "$i" =~ $pattern ]]
+        then
+            mv "$i" "${i// /_}"
+            i="${i// /_}"
+        fi
+        text_files+=("$i")
+    done
+fi
+
+len=${#text_files[@]}
+echo "$len text files detected"
+echo
+echo
+
+
+#Perform FastTree pipeline on text files
+for i in ${text_files[@]}
+do
+    NAME="${i%.*}"
+    echo "#### $NAME ####"
+    echo "Text file name: $NAME"
+    
+    sed -i 's/\r/\n/g' "$i"
+    if [ -z "$DB" ]
+    then
+        echo "Database required if text files provided"
+        # DB_PATH='databases/'
+        exit 1
+    fi
+    echo "Creating input fasta: ${NAME}.fasta"
+    blastdbcmd -db "$DB_PATH$DB" -entry_batch "$i" -out "${NAME}.fasta"
+    
+    
+
+    echo "Making directory $NAME"
+    mkdir "$NAME"
+    cd "$NAME"
+    mv ../"$i" .
+    mv ../"${NAME}.fasta" .
+    
+    #Determine how many sequences and remove any duplicates
+    START=$(grep "^>" "${NAME}.fasta" | wc -l)
+    echo "Removing duplicate sequences"
+    sed -e '/^>/s/$/@/' "${NAME}.fasta" | tr -d '\n' | tr ">" "\n" | tr "@" "\t" | sort -u -t ' ' -f -k1,1 | sed -e 's/^/>/' -e 's/\t/\n/' | tail -n +2 > "${NAME}_single.fasta"
+    SUCCESS=$(grep "^>" "${NAME}_single.fasta" | wc -l)
+    if [ "$START" -gt "$SUCCESS" ]
+    then
+        echo "$(($START-$SUCCESS)) sequences removed"
+    else
+        echo "No duplicates detected"
+    fi
+    echo "Number of sequences= $SUCCESS"
+    #If more than 3 sequences present in fasta file perform FastTree pipeline
+    if [ "$SUCCESS" -gt "3" ]
+    then
+        echo
+        echo
+        echo "# Detecting data type"
+        seqkit stats "${NAME}_single.fasta" -T > "${NAME}"_stats_output.txt
+        if tail -n +2 "${NAME}"_stats_output.txt | cut -f3 | grep "Protein"
+        then
+            DTYPE='protein'
+            echo "Data type: $DTYPE"
+            rm "${NAME}"_stats_output.txt
+            if [ ! -z "$MODEL" ] && [ "$MODEL" = "gtr" ]
+            then
+                ERROR="Error: Inappropriate model type chosen (nucleotide algorithm for protein sequences) defaulting to JTT"
+                MODEL=""
+            fi
+        else
+            DTYPE='nucleotide'
+            echo "Data type: $DTYPE"
+            rm "${NAME}"_stats_output.txt
+            if [ ! -z "$MODEL" ] && [ "$MODEL" != "gtr" ]
+            then
+                ERROR="Error: Inappropriate model type chosen (protein algorithm for nucleotide sequences) defaulting to JC"
+                MODEL=""
+            fi
+        fi
+        echo
+        echo "# Aligning sequences"
+        muscle -in "${NAME}_single.fasta" -out "${NAME}_aln.fasta" 2>&1
+        echo
+        echo "# Editing alignment"
+        alncut --version
+        alncut --verbose -gf "$FREQ" < "${NAME}_aln.fasta" > "${NAME}_edited.fasta"
+        echo
+        echo "# Building tree"
+        if [ ! -z "$ERROR" ]
+        then
+        echo "$ERROR"
+        echo
+        fi
+        if [ -z "$MODEL" ] && [ "$DTYPE" = "protein" ]
+        then
+            FastTree "${NAME}_edited.fasta" > "${NAME}_tree"
+        elif [ -z "$MODEL" ] && [ "$DTYPE" = "nucleotide" ]
+        then
+            FastTree -nt "${NAME}_edited.fasta" > "${NAME}_tree"
+        elif [ ! -z "$MODEL" ] && [ "$DTYPE" = "protein" ]
+        then
+            FastTree -"${MODEL}" "${NAME}_edited.fasta" > "${NAME}_tree"
+        else
+            FastTree -"${MODEL}" -nt "${NAME}_edited.fasta" > "${NAME}_tree"
+        fi
+        echo
+        echo
+        echo
+    else
+        echo "Not enough sequences to build tree"
+        echo
+        echo
+        echo
+    fi
+    cd ../
+done
+
+
+
+#Perform FastTree pipeline on fasta files
+for i in ${fasta_files[@]}
+do
+    NAME="${i%.*}"
+    echo "#### $NAME ####"
+    echo "Fasta file name: $NAME"
+    echo "Making directory $NAME"
+    mkdir "$NAME"
+    cd "$NAME"
+    mv ../"$i" .
+    #Determine how many sequences and remove duplicate sequences
+    START=$(grep "^>" "${NAME}.fasta" | wc -l)
+    echo "Removing duplicate sequences"
+    sed -e '/^>/s/$/@/' -e 's/^>/#/' "${NAME}.fasta" | tr -d '\n' | tr "#" "\n" | tr "@" "\t" | sort -u -t ' ' -f -k1,1 | sed -e 's/^/>/' -e 's/\t/\n/' | tail -n +2 > "${NAME}_single.fasta"
+    SUCCESS=$(grep "^>" "${NAME}_single.fasta" | wc -l)
+    if [ "$START" -gt "$SUCCESS" ]
+    then
+        echo "$(($START-$SUCCESS)) sequences removed"
+    else
+        echo "No duplicates detected"
+    fi
+    echo "Number of sequences= $SUCCESS"
+    
+    #If there are more than three sequences in the file then perform the FastTree pipeline
+    if [ "$SUCCESS" -gt "3" ]
+    then
+        echo
+        echo
+        echo "# Detecting data type"
+        seqkit stats "${NAME}_single.fasta" -T > "${NAME}"_stats_output.txt
+        if tail -n +2 "${NAME}"_stats_output.txt | cut -f3 | grep "Protein"
+        then
+            DTYPE='protein'
+            echo "Data type: $DTYPE"
+            rm "${NAME}"_stats_output.txt
+            if [ ! -z "$MODEL" ] && [ "$MODEL" == "gtr" ]
+            then
+                ERROR="Error: Inappropriate model type chosen (nucleotide algorithm for protein sequences) defaulting to JTT"
+                MODEL=""
+            fi
+        else
+            DTYPE='nucleotide'
+            echo "Data type: $DTYPE"
+            rm "${NAME}"_stats_output.txt
+            if [ ! -z "$MODEL" ] && [ "$MODEL" != "gtr" ]
+            then
+                ERROR="Error: Inappropriate model type chosen (protein algorithm for nucleotide sequences) defaulting to JC"
+                MODEL=""
+            fi
+        fi
+        echo "# Aligning sequences"
+        muscle -in "${NAME}_single.fasta" -out "${NAME}_aln.fasta" 2>&1
+        echo
+        echo "# Editing alignment"
+        alncut --version
+        alncut --verbose -gf "$FREQ" < "${NAME}_aln.fasta" > "${NAME}_edited.fasta"
+        echo
+        echo "# Building tree"
+        if [ ! -z "$ERROR" ]
+        then
+        echo "$ERROR"
+        echo
+        fi        
+        if [ -z "$MODEL" ] && [ "$DTYPE" = "protein" ]
+        then
+            FastTree "${NAME}_edited.fasta" > "${NAME}_tree"
+        elif [ -z "$MODEL" ] && [ "$DTYPE" = "nucleotide" ]
+        then
+            FastTree -nt "${NAME}_edited.fasta" > "${NAME}_tree"
+        elif [ ! -z "$MODEL" ] && [ "$DTYPE" = "protein" ]
+        then
+            FastTree -"${MODEL}" "${NAME}_edited.fasta" > "${NAME}_tree"
+        else
+            FastTree -"${MODEL}" -nt "${NAME}_edited.fasta" > "${NAME}_tree"
+        fi
+        echo
+        echo
+        echo
+        echo
+    else
+        echo "Not enough sequences to build tree"
+        echo
+        echo
+        echo
+    fi
+    cd ../
+done
