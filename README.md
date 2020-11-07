@@ -9,11 +9,11 @@ Currently in development
 
 
 ## Quick start
-This is still in development
+In development
 
 ## Contact info
 For general enquiries please contact ebutterfield@dundee.ac.uk, to report issues 
-please use the [GitHub issue tracker] (https://github.com/erin-r-butterfield/batch_brb/issues).
+please use the [GitHub issue tracker](https://github.com/erin-r-butterfield/batch_brb/issues).
 
 ## How to cite batch_brb
 
