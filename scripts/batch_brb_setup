@@ -11,6 +11,7 @@ set -euo pipefail
 
 #Create directories
 mkdir -p batch_brb/{databases,jobs,templates/{CSVs,Excel_files},documentation}
+cd batch_brb
 
 #Copy data into folders
 cp ${CONDA_PREFIX}/etc/01_batch_makeblastdb_template.csv templates/CSVs/
@@ -28,5 +29,11 @@ cp ${CONDA_PREFIX}/etc/LICENSE documentation/
 cp ${CONDA_PREFIX}/etc/info.txt documentation/
 cp ${CONDA_PREFIX}/etc/batch_brb_manual.pdf documentation/
 
+
 #Show welcome message
 cat ${CONDA_PREFIX}/etc/info.txt
+
+echo
+echo
+echo
+echo "batch_brb located $(pwd)"
