@@ -38,7 +38,7 @@ while :; do
 done
 
 
-# SCRIPT_PATH='../../scripts/'
+SCRIPT_PATH="$CONDA_PREFIX"
 pattern=' '
 
 
@@ -57,7 +57,7 @@ echo
 #If CSV of orthology results supplied convert results to text files and move into text files folder
 if [ ! -z "$CSV" ]
 then
-    python ft01_extract_accessions.py "$CSV"
+    python "${SCRIPT_PATH}/"ft01_extract_accessions.py "$CSV"
     cd Trees
     DB_PATH='../../../databases/' 
 else

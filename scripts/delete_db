@@ -29,7 +29,7 @@ while :; do
 done
 
 pattern=' '
-# SCRIPT_PATH='../scripts/'
+SCRIPT_PATH="$CONDA_PREFIX"
 
 i=1
 while IFS="," read BLASTDB SQLDB || [ -n "$BLASTDB$SQLDB" ];
@@ -108,10 +108,10 @@ do
         then
             if [ "$ALIAS_DB" == "True" ]
             then
-                python del01_delete_db_entries.py -db "$SQLDB" -name "$BLASTDB" -alias
+                python "${SCRIPT_PATH}/"del01_delete_db_entries.py -db "$SQLDB" -name "$BLASTDB" -alias
                 PYTHON_SUCCESS=$?
             else
-                python del01_delete_db_entries.py -db "$SQLDB" -name "$BLASTDB" -type "$DBTYPE"
+                python "${SCRIPT_PATH}/"del01_delete_db_entries.py -db "$SQLDB" -name "$BLASTDB" -type "$DBTYPE"
                 PYTHON_SUCCESS=$?
             fi
             set +o noclobber
@@ -156,42 +156,3 @@ do
 done < $CSV
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#Read csv to get database names
-#Check for illegal characters, spaces etc
-#For each database:
-#   A. determine data type
-#   B. determine whether it is an alias database
-#   1. create database lock file
-#   2. run python script to delete database entries
-#   3. remove lock file
-#   4. rm file

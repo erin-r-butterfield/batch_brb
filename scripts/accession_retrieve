@@ -33,7 +33,7 @@ while :; do
 done
 
 pattern=' '
-# SCRIPT_PATH='../../scripts/'
+SCRIPT_PATH="$CONDA_PREFIX"
 DB_PATH='../../databases/'
 
 i=1
@@ -169,7 +169,7 @@ do
         echo
         echo '#Retrieving accessions'
         echo "Matched accessions in: ${JOB}_db_accessions.csv"
-        python ar01_accret.py -fa "$INFILE" -out "$JOB" -name "$BLAST_DB" -type "$DBTYPE" -db "$DB_PATH$SQLDB"
+        python "${SCRIPT_PATH}/"ar01_accret.py -fa "$INFILE" -out "$JOB" -name "$BLAST_DB" -type "$DBTYPE" -db "$DB_PATH$SQLDB"
         
 
         #Performing BLAST if unable to identify all accessions

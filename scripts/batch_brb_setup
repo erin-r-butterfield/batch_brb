@@ -35,5 +35,6 @@ cat ${CONDA_PREFIX}/etc/info.txt
 
 echo
 echo
-echo
 echo "batch_brb located $(pwd)"
+echo
+echo

@@ -29,7 +29,7 @@ while :; do
 done
 
 pattern=' '
-#SCRIPT_PATH='../scripts/'
+SCRIPT_PATH="$CONDA_PREFIX"
 
 i=1
 while IFS="," read DBLIST DBTYPE TITLE OUTPUT SQLDB || [ -n "$DBLIST$DBTYPE$TITLE$OUTPUT$SQLDB" ];
@@ -86,7 +86,7 @@ do
     # Aliasdb pipeline
     echo "#### $OUTPUT ####"
     echo 'Making alias database'
-    python adb01_check_db.py -name "$OUTPUT" -db "$SQLDB" 
+    python "${SCRIPT_PATH}/"adb01_check_db.py -name "$OUTPUT" -db "$SQLDB" 
     CHECK_SUCCESS=$?
     if [ "$CHECK_SUCCESS" -ne "0" ]
     then
@@ -105,7 +105,7 @@ do
             set -o noclobber
             if { > lock_file ; } &> /dev/null
             then
-                python adb02_add_alias_to_db.py -infile "$DBLIST" -name "$OUTPUT" -db "$SQLDB" 
+                python "${SCRIPT_PATH}/"adb02_add_alias_to_db.py -infile "$DBLIST" -name "$OUTPUT" -db "$SQLDB" 
                 PYTHON_SUCCESS=$?
                 set +o noclobber
                 rm lock_file

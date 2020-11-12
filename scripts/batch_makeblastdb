@@ -29,7 +29,7 @@ while :; do
 done
 
 pattern=' '
-#SCRIPT_PATH='../scripts/'
+SCRIPT_PATH="$CONDA_PREFIX"
 
 i=1
 while IFS="," read INFILE DB || [ -n "$INFILE$DB" ];
@@ -71,5 +71,5 @@ do
     fi
 
 
-    mdb01_makeblastdb.sh -in "$INFILE" -db "$DB"
+    "${SCRIPT_PATH}/"mdb01_makeblastdb.sh -in "$INFILE" -db "$DB"
 done < $CSV
