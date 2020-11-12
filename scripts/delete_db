@@ -29,7 +29,7 @@ while :; do
 done
 
 pattern=' '
-SCRIPT_PATH="$CONDA_PREFIX"
+SCRIPT_PATH="$CONDA_PREFIX/bin"
 
 i=1
 while IFS="," read BLASTDB SQLDB || [ -n "$BLASTDB$SQLDB" ];

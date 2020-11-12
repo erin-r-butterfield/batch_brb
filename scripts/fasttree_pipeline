@@ -38,7 +38,7 @@ while :; do
 done
 
 
-SCRIPT_PATH="$CONDA_PREFIX"
+SCRIPT_PATH="$CONDA_PREFIX/bin"
 pattern=' '
 
 

@@ -31,7 +31,7 @@ while :; do
 done
 
 pattern=' '
-SCRIPT_PATH="$CONDA_PREFIX"
+SCRIPT_PATH="$CONDA_PREFIX/bin"
 
 #Error if no input file
 if [ -z "$INFILE" ]
