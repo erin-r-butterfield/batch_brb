@@ -31,7 +31,7 @@ while :; do
 done
 
 pattern=' '
-SCRIPT_PATH="$CONDA_PREFIX/bin"
+# SCRIPT_PATH="$CONDA_PREFIX/bin"
 
 #Error if no input file
 if [ -z "$INFILE" ]
@@ -102,7 +102,7 @@ then
         set -o noclobber
         if { > lock_file ; } &> /dev/null
         then
-            python "${SCRIPT_PATH}/"mdb02_convert_header.py "$INFILE" "${FBNAME}"_converted.fasta -db "$DB" -blastdb "$FBNAME"
+            python mdb02_convert_headers.py "$INFILE" "${FBNAME}"_converted.fasta -db "$DB" -blastdb "$FBNAME"
             SUCCESS=$?
             set +o noclobber
             rm lock_file
@@ -133,7 +133,7 @@ then
         set -o noclobber
         if { > lock_file ; } &> /dev/null
         then
-            python "${SCRIPT_PATH}/"mdb03_add_to_db.py -infile "${FBNAME}".fasta -name "$ORIGINAL" -db "$DB" -type "$DBTYPE"
+            python mdb03_add_to_db.py -infile "${FBNAME}".fasta -name "$ORIGINAL" -db "$DB" -type "$DBTYPE"
             SUCCESS=$?
             set +o noclobber
             rm lock_file
@@ -156,7 +156,7 @@ then
                 set -o noclobber
                 if { > lock_file ; } &> /dev/null
                 then
-                    python "${SCRIPT_PATH}/"del01_delete_db_entries.py -db "$DB" -name "$ORIGINAL" -type "$DBTYPE"
+                    python del01_delete_db_entries.py -db "$DB" -name "$ORIGINAL" -type "$DBTYPE"
                     echo "Accessions removed from SQLite3 database: $DB"
                     set +o noclobber
                     rm lock_file
