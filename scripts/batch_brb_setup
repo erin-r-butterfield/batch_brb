@@ -14,20 +14,8 @@ mkdir -p batch_brb/{databases,jobs,templates/{CSVs,Excel_files},documentation}
 cd batch_brb
 
 #Copy data into folders
-cp ${CONDA_PREFIX}/etc/01_batch_makeblastdb_template.csv templates/CSVs/
-cp ${CONDA_PREFIX}/etc/02_make_aliasdb_template.csv templates/CSVs/
-cp ${CONDA_PREFIX}/etc/03_accession_retrieve_template.csv templates/CSVs/
-cp ${CONDA_PREFIX}/etc/04_orthology_pipeline_form_template.csv templates/CSVs/
-cp ${CONDA_PREFIX}/etc/delete_database_template.csv templates/CSVs/
-cp ${CONDA_PREFIX}/etc/01_batch_makeblastdb_template.xlsx templates/Excel_files/
-cp ${CONDA_PREFIX}/etc/02_make_aliasdb_template.xlsx templates/Excel_files/
-cp ${CONDA_PREFIX}/etc/03_accession_retrieve_template.xlsx templates/Excel_files/
-cp ${CONDA_PREFIX}/etc/04_orthology_pipeline_form_template.xlsx templates/Excel_files/
-cp ${CONDA_PREFIX}/etc/delete_database_template.xlsx templates/Excel_files/
-
-cp ${CONDA_PREFIX}/etc/LICENSE documentation/
-cp ${CONDA_PREFIX}/etc/info.txt documentation/
-cp ${CONDA_PREFIX}/etc/batch_brb_manual.pdf documentation/
+cp ${CONDA_PREFIX}/etc/templates/* templates/
+cp ${CONDA_PREFIX}/etc/documentation/* documentation/
 
 
 #Show welcome message
