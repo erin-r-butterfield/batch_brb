@@ -29,7 +29,7 @@ while :; do
 done
 
 pattern=' '
-# SCRIPT_PATH="$CONDA_PREFIX/bin"
+SCRIPT_PATH="$CONDA_PREFIX/bin"
 
 i=1
 while IFS="," read BLASTDB SQLDB || [ -n "$BLASTDB$SQLDB" ];
@@ -108,10 +108,10 @@ do
         then
             if [ "$ALIAS_DB" == "True" ]
             then
-                python del01_delete_db_entries.py -db "$SQLDB" -name "$BLASTDB" -alias
+                python "${SCRIPT_PATH}/"del01_delete_db_entries.py -db "$SQLDB" -name "$BLASTDB" -alias
                 PYTHON_SUCCESS=$?
             else
-                python del01_delete_db_entries.py -db "$SQLDB" -name "$BLASTDB" -type "$DBTYPE"
+                python "${SCRIPT_PATH}/"del01_delete_db_entries.py -db "$SQLDB" -name "$BLASTDB" -type "$DBTYPE"
                 PYTHON_SUCCESS=$?
             fi
             set +o noclobber

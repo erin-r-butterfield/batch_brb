@@ -35,7 +35,7 @@ done
 
 pattern=' '
 DB_PATH='../../databases/'
-# SCRIPT_PATH="$CONDA_PREFIX/bin"
+SCRIPT_PATH="$CONDA_PREFIX/bin"
 
 i=1
 while IFS="," read  NAME INPUT FBLAST_DB RBLAST_DB EVALUE HITS COV SQLDB NUM_THREADS MAX_HITS TREE FREQ MODEL|| [ -n "$NAME$INPUT$FBLAST_DB$RBLAST_DB$EVALUE$HITS$COV$SQLDB$NUM_THREADS$MAX_HITS$TREE$FREQ$MODEL" ];
@@ -230,7 +230,7 @@ do
     echo "#FILTERING FIRST BLAST RESULTS"
     echo "Filtering parameters: ${COV}% alignment coverage and top $HITS hits selected"
     echo "Filtered hits file: ${NAME}_filtered_FB.txt"
-    python or01_filter_hits.py "${NAME}_FB.txt" "$NAME" "$HITS" "$COV" "$DB_PATH$SQLDB" "$FB_TYPE"
+    python "${SCRIPT_PATH}/"or01_filter_hits.py "${NAME}_FB.txt" "$NAME" "$HITS" "$COV" "$DB_PATH$SQLDB" "$FB_TYPE"
     if [ ! -s "${NAME}_filtered_FB.txt" ]
     then
         echo "Error: No filtered first BLAST results"
@@ -276,9 +276,9 @@ do
     echo "Filtering parameters: ${COV}% alignment coverage and top $HITS hits selected"
     if [ "$FB_ALIAS" == "True" ]
     then
-        python or02_find_orthologs.py "${NAME}_RB.txt" "${NAME}_filtered_FB.txt" "$NAME" "$HITS" "$COV" -sqldb "$DB_PATH$SQLDB" -blastdb "$FBLAST_DB"
+        python "${SCRIPT_PATH}/"or02_find_orthologs.py "${NAME}_RB.txt" "${NAME}_filtered_FB.txt" "$NAME" "$HITS" "$COV" -sqldb "$DB_PATH$SQLDB" -blastdb "$FBLAST_DB"
     else
-        python or02_find_orthologs.py "${NAME}_RB.txt" "${NAME}_filtered_FB.txt" "$NAME" "$HITS" "$COV"
+        python "${SCRIPT_PATH}/"or02_find_orthologs.py "${NAME}_RB.txt" "${NAME}_filtered_FB.txt" "$NAME" "$HITS" "$COV"
     fi
     echo "Orthology results file: ${NAME}_orthologs.csv"
     if [ ! -s "${NAME}_orthologs.csv" ]
