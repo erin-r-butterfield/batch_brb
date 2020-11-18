@@ -31,6 +31,12 @@ done
 pattern=' '
 SCRIPT_PATH="$CONDA_PREFIX/bin"
 
+if [ ! -s "$CSV" ]
+then
+    echo "Error: CSV file required, if provided, check spelling"
+    exit 1
+fi
+
 i=1
 while IFS="," read BLASTDB SQLDB || [ -n "$BLASTDB$SQLDB" ];
 do

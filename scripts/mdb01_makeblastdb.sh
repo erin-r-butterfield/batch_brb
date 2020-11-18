@@ -34,11 +34,12 @@ pattern=' '
 SCRIPT_PATH="$CONDA_PREFIX/bin"
 
 #Error if no input file
-if [ -z "$INFILE" ]
+if [ ! -s "$INFILE" ]
 then
-    echo "Error: Input file required"
+    echo "Error: Infile required, check spelling and include extension"
     exit 1
 fi
+
 
 
 #If db not supplied then set database to default

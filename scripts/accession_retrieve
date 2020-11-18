@@ -36,6 +36,12 @@ pattern=' '
 SCRIPT_PATH="$CONDA_PREFIX/bin"
 DB_PATH='../../databases/'
 
+if [ ! -s "$CSV" ]
+then
+    echo "Error: CSV file required, if provided, check spelling"
+    exit 1
+fi
+
 i=1
 while IFS="," read INFILE JOB BLAST_DB SQLDB EVALUE MAX NUM_THREADS || [ -n "$INFILE$JOB$BLAST_DB$SQLDB$EVALUE$MAX$NUM_THREADS" ];
 do
@@ -48,17 +54,24 @@ do
     if [ -z "$INFILE" ] ||  [ -z "$JOB" ] || [ -z "$BLAST_DB" ] 
     then
         echo 'Fasta_file, job_name and BLAST_database_name are required arguments'
+        exit 1
     fi
 
     if [[ "$INFILE" =~ ^[0-9] ]] || [[ "$JOB" =~ ^[0-9] ]] || [[ "$BLAST_DB" =~ ^[0-9] ]] || [[ "$SQLDB" =~ ^[0-9] ]];
     then
-        echo 'Paramaeters cannot start with a number'
+        echo 'Fasta_file, job_name, BLAST_database_name and SQLite3_db cannot start with a number'
         exit 1
     fi
 
     if [[ "$BLAST_DB" =~ $pattern ]] || [[ "$SQLDB" =~ $pattern ]];
     then
         echo 'BLAST_database and SQLite3_db cannot contain spaces, please replace with _'
+        exit 1
+    fi
+
+    if [ ! -s "$INFILE" ]
+    then
+        echo "Error: Cannot find Fasta_file"
         exit 1
     fi
 

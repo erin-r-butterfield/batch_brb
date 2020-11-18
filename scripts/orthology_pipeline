@@ -18,6 +18,7 @@ while :; do
         echo "                                csv must be in format: JOB_NAME, ACCESSION_LIST, FB_DATABASE, RB_DATABASE, EVALUE, HITS, COVERAGE, SQLITE3_DB, NUM_THREADS, MAX, TREE, FREQUENCY, MODEL"
         echo "                                The following fields are optional, defualt values are shown, all other fields are required:"
         echo "                                SQLITE3_DB: SQLite3 database, default = accession_db.db"
+        echo "                                EVALUE: expect value, default = 0.1"
         echo "                                NUM_THREADS: int, number of threads to use, default = 4"
       	echo "                                MAX: int, maximum number of sequences to retrieve in BLAST, default = 150"
         echo "                                TREE: boolean (y/n), perform phylogenetic analysis, default = n"
@@ -37,6 +38,12 @@ pattern=' '
 DB_PATH='../../databases/'
 SCRIPT_PATH="$CONDA_PREFIX/bin"
 
+if [ ! -s "$CSV" ]
+then
+    echo "Error: CSV file required, if provided, check spelling"
+    exit 1
+fi
+
 i=1
 while IFS="," read  NAME INPUT FBLAST_DB RBLAST_DB EVALUE HITS COV SQLDB NUM_THREADS MAX_HITS TREE FREQ MODEL|| [ -n "$NAME$INPUT$FBLAST_DB$RBLAST_DB$EVALUE$HITS$COV$SQLDB$NUM_THREADS$MAX_HITS$TREE$FREQ$MODEL" ];
 do
@@ -46,9 +53,10 @@ do
     MODEL=$(echo $MODEL | tr -d '\r')
 
     #Validating inputs   
-    if [ -z "$NAME" ] || [ -z "$INPUT" ] || [ -z "$FBLAST_DB" ] || [ -z "$RBLAST_DB" ] || [ -z "$HITS" ] || [ -z "$COV" ]; 
+    if [ -z "$NAME" ] || [ ! -s "$INPUT" ] || [ -z "$FBLAST_DB" ] || [ -z "$RBLAST_DB" ] || [ -z "$HITS" ] || [ -z "$COV" ]; 
     then
-        echo 'Job_name, Accession_list, FB_database, RB_database, Hits and Coverage are required arguments'        
+        echo 'Job_name, Accession_list, FB_database, RB_database, Hits and Coverage are required arguments'
+        echo 'Ensure Accession_list file present, correctly spelt and includes extension'        
         exit 1
     fi
     

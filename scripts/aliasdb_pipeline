@@ -31,6 +31,12 @@ done
 pattern=' '
 SCRIPT_PATH="$CONDA_PREFIX/bin"
 
+if [ ! -s "$CSV" ]
+then
+    echo "Error: CSV file required, if provided, check spelling"
+    exit 1
+fi
+
 i=1
 while IFS="," read DBLIST DBTYPE TITLE OUTPUT SQLDB || [ -n "$DBLIST$DBTYPE$TITLE$OUTPUT$SQLDB" ];
 do
@@ -40,7 +46,7 @@ do
 
 
     # Make sure required arguments are supplied    
-    if [ -z "$DBLIST" ] ||  [ -z "$DBTYPE" ] || [ -z "$TITLE" ] || [ -z "$OUTPUT" ] 
+    if [ ! -s "$DBLIST" ] ||  [ -z "$DBTYPE" ] || [ -z "$TITLE" ] || [ -z "$OUTPUT" ] 
     then
         echo 'dblist_file, dbtype, title, output are required arguments'
         exit 1
