@@ -5,7 +5,7 @@ batch_brb is a command-line application for automated best reciprocal BLAST.  Co
 batch_brb performs ortholog identification using best reciprocal BLAST.  Sequences of interest are searched against a user created database.  The top x hits per query per organism are extracted and filtered by y coverage of the query where x and y are specified by the user.  Identical hits do not contribute to the hit count.  These hits are searched against the organism of the original query sequences.  The top x hits per query are  filtered by y query coverage as above.  Where the hits from the first and reverse BLAST match, the sequences are considered orthologs.  batch_brb is designed to enable maximum coverage and requires user analysis of hits for the exclusion of mishits and paralogs. 
 
 ## Documentation
-See the batch_brb_manual in the documentation folder for usage instructions
+See the [batch_brb_manual](https://github.com/erin-r-butterfield/batch_brb/blob/main/documentation/batch_brb_manual.pdf) in the documentation folder for usage instructions
 
 ## Quick start
 batch_brb is available as a Bioconda package and requires [Conda](https://docs.conda.io/en/latest/miniconda.html) and [Bioconda](https://bioconda.github.io/user/install.html).  On Linux/Unix-like operating system:
