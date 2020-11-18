@@ -3,8 +3,10 @@
 #### Welcome to batch_brb ####
 
 This software is designed for the automation of best reciprocal BLAST 
-and phylogenetic analysis using FastTree. If you use this software 
-please cite (ADD LATER) and the dependency publications (see documentation). 
+and phylogenetic analysis using FastTree. A protocol publication describing this
+software is currently in preparation.  In the meantime if you use this software 
+please cite the GitHub repository https://github.com/erin-r-butterfield/batch_brb 
+Please also cite the dependency publications (see documentation). 
 
 
 This software was created by the Wellcome Centre for Anti-Infectives 
