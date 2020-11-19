@@ -168,6 +168,7 @@ do
         if [ "$DBTYPE" != "$FB_TYPE" ]
         then
             echo 'Input sequences different data type to BLAST database, please convert to same type'
+            mv "$INPUT" ../
             exit 1
         fi
 
@@ -211,6 +212,7 @@ do
         echo
         echo
         echo
+        mv "$INPUT" ../
         cd ../
         exit 1
     fi

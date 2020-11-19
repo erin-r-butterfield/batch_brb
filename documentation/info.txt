@@ -22,7 +22,7 @@ under certain conditions; type `show c' for details.
 For general enquires please contact ebutterfield@dundee.ac.uk, please use 
 the GitHub issue tracker to report any problems using batch_brb
 
-To get started head over to the documentation 
+To get started head over to the batch_brb_manual in the documentation folder 
 
 Happy comparative genomics :-)
 
