@@ -53,10 +53,8 @@ fi
 MUSCLE_VERSION=$(muscle -version) 
 if [ "${MUSCLE_VERSION:7:1}" = "v" ]; then
     MUSCLE_NO="${MUSCLE_VERSION:8:1}"
-    echo "${MUSCLE_NO}"
 else
     MUSCLE_NO="${MUSCLE_VERSION:7:1}" 
-    echo "${MUSCLE_NO}"
 fi
 
 
@@ -189,10 +187,8 @@ do
         echo "# Aligning sequences"
         muscle -version
         if [ "${MUSCLE_NO}" -ge 5 ]; then
-            echo "${MUSCLE_NO}" ">= 5"
             muscle -align "${NAME}_single.fasta" -output "${NAME}_aln.fasta" 2>&1
         else
-            echo "${MUSCLE_NO}" "< 5"
             muscle -in "${NAME}_single.fasta" -out "${NAME}_aln.fasta" 2>&1
         fi
         
@@ -286,10 +282,8 @@ do
         echo "# Aligning sequences"
         muscle -version
         if [ "${MUSCLE_NO}" -ge 5 ]; then
-            echo "${MUSCLE_NO}" ">= 5"
             muscle -align "${NAME}_single.fasta" -output "${NAME}_aln.fasta" 2>&1
         else
-            echo "${MUSCLE_NO}" "< 5"
             muscle -in "${NAME}_single.fasta" -out "${NAME}_aln.fasta" 2>&1
         fi
         echo
