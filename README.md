@@ -23,7 +23,13 @@ For general enquiries please contact ebutterfield@dundee.ac.uk, to report issues
 please use the [GitHub issue tracker](https://github.com/erin-r-butterfield/batch_brb/issues).
 
 ## How to cite batch_brb
-A protocol publication describing batch_brb is currently in preparation.  In the meantime please cite the [GitHub repository](https://github.com/erin-r-butterfield/batch_brb).  Please also cite the dependency publications, see documentation for a list of dependencies.
+If you use this software please cite the protocol publication describing it:
+
+[Butterfield, E.R., Abbott, J.C., Field, M.C. (2021). Automated Phylogenetic Analysis Using 
+Best Reciprocal BLAST. In: de Pablos, L.M., Sotillo, J. (eds) *Parasite Genomics. 
+Methods in Molecular Biology*, vol 2369. Humana, New York, NY.](https://doi.org/10.1007/978-1-0716-1681-9_4)
+
+Please also cite the dependency publications, see documentation for a list of dependencies.
 
 ## Acknowledgements
 This software was created by the Wellcome Centre for Anti-Infectives 
