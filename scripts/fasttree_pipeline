@@ -50,7 +50,6 @@ then
 fi
 
 # Determine Muscle version
-echo "Getting new muscle information"
 MUSCLE_VERSION=$(muscle -version) 
 if [ "${MUSCLE_VERSION:7:1}" = "v" ]; then
     MUSCLE_NO="${MUSCLE_VERSION:8:1}"
@@ -188,7 +187,6 @@ do
         fi
         echo
         echo "# Aligning sequences"
-        echo "IS THIS WORKING?"
         muscle -version
         if [ "${MUSCLE_NO}" -ge 5 ]; then
             echo "${MUSCLE_NO}" ">= 5"
@@ -286,7 +284,6 @@ do
             fi
         fi
         echo "# Aligning sequences"
-        echo "IS THIS WORKING?"
         muscle -version
         if [ "${MUSCLE_NO}" -ge 5 ]; then
             echo "${MUSCLE_NO}" ">= 5"

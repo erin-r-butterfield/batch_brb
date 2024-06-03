@@ -3,9 +3,14 @@
 #### Welcome to batch_brb ####
 
 This software is designed for the automation of best reciprocal BLAST 
-and phylogenetic analysis using FastTree. A protocol publication describing this
-software is currently in preparation.  In the meantime if you use this software 
-please cite the GitHub repository https://github.com/erin-r-butterfield/batch_brb 
+and phylogenetic analysis using FastTree. 
+
+If you use this software please cite the protocol publication describing it:
+
+Butterfield, E.R., Abbott, J.C., Field, M.C. (2021). Automated Phylogenetic Analysis Using 
+Best Reciprocal BLAST. In: de Pablos, L.M., Sotillo, J. (eds) Parasite Genomics. 
+Methods in Molecular Biology, vol 2369. Humana, New York, NY. https://doi.org/10.1007/978-1-0716-1681-9_4
+
 Please also cite the dependency publications (see documentation). 
 
 
@@ -20,7 +25,8 @@ under certain conditions; type `show c' for details.
 
 
 For general enquires please contact ebutterfield@dundee.ac.uk, please use 
-the GitHub issue tracker to report any problems using batch_brb
+the GitHub issue tracker (https://github.com/erin-r-butterfield/batch_brb/issues) 
+to report any problems using batch_brb
 
 To get started head over to the batch_brb_manual in the documentation folder 
 
