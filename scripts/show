@@ -8,4 +8,4 @@
 #Usage: show
 
 
-cat ${CONDA_PREFIX}/etc/documentation/LICENSE.txt 
+cat ${CONDA_PREFIX}/etc/documentation/LICENSE
