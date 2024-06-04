@@ -49,6 +49,13 @@ then
       FREQ=0.25
 fi
 
+# Determine Muscle version
+MUSCLE_VERSION=$(muscle -version) 
+if [ "${MUSCLE_VERSION:7:1}" = "v" ]; then
+    MUSCLE_NO="${MUSCLE_VERSION:8:1}"
+else
+    MUSCLE_NO="${MUSCLE_VERSION:7:1}" 
+fi
 
 
 echo
@@ -178,7 +185,13 @@ do
         fi
         echo
         echo "# Aligning sequences"
-        muscle -in "${NAME}_single.fasta" -out "${NAME}_aln.fasta" 2>&1
+        muscle -version
+        if [ "${MUSCLE_NO}" -ge 5 ]; then
+            muscle -align "${NAME}_single.fasta" -output "${NAME}_aln.fasta" 2>&1
+        else
+            muscle -in "${NAME}_single.fasta" -out "${NAME}_aln.fasta" 2>&1
+        fi
+        
         echo
         echo "# Editing alignment"
         alncut --version
@@ -267,7 +280,12 @@ do
             fi
         fi
         echo "# Aligning sequences"
-        muscle -in "${NAME}_single.fasta" -out "${NAME}_aln.fasta" 2>&1
+        muscle -version
+        if [ "${MUSCLE_NO}" -ge 5 ]; then
+            muscle -align "${NAME}_single.fasta" -output "${NAME}_aln.fasta" 2>&1
+        else
+            muscle -in "${NAME}_single.fasta" -out "${NAME}_aln.fasta" 2>&1
+        fi
         echo
         echo "# Editing alignment"
         alncut --version
